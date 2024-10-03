@@ -1,0 +1,186 @@
+#include <iostream>
+#include <vector>
+#include <ctime>
+#include <fstream>
+#include <algorithm>
+#include <cstdlib>
+
+using namespace std;
+
+// Constants
+const int SIZE = 9;
+
+// Function prototypes
+void generateCompletedBoard(vector<vector<int>>& board);
+bool isValid(const vector<vector<int>>& board, int row, int col, int num);
+bool solveSudoku(vector<vector<int>>& board);
+void createPuzzle(vector<vector<int>>& board, int difficulty);
+void printBoard(const vector<vector<int>>& board);
+void saveGame(const vector<vector<int>>& board, const string& filename);
+void loadGame(vector<vector<int>>& board, const string& filename);
+int calculateScore(double timeTaken, int correctMoves, int totalMoves);
+void startTimer();
+
+int main() {
+    vector<vector<int>> board(SIZE, vector<int>(SIZE, 0));
+    generateCompletedBoard(board); // Step 1: Generate a completed board
+    int difficulty = 40; // Adjust the difficulty by changing the number of cells to remove
+    createPuzzle(board, difficulty); // Step 2: Create a puzzle from the completed board
+
+    // Game variables
+    int playerMoves = 0;
+    int correctMoves = 0;
+    double timeTaken = 0.0;
+    bool gameInProgress = true;
+
+    // Start timer
+    startTimer();
+    clock_t startTime = clock();
+
+    while (gameInProgress) {
+        printBoard(board);
+        
+        cout << "Enter row (0-8), column (0-8), and number (1-9) to place (or 's' to save, 'l' to load, 'q' to quit): ";
+        string command;
+        cin >> command;
+
+        if (command == "s") {
+            saveGame(board, "sudoku_save.txt");
+            cout << "Game saved!" << endl;
+            continue;
+        } else if (command == "l") {
+            loadGame(board, "sudoku_save.txt");
+            cout << "Game loaded!" << endl;
+            continue;
+        } else if (command == "q") {
+            cout << "Quitting game." << endl;
+            gameInProgress = false;
+            continue;
+        }
+
+        int row, col, num;
+        cin >> row >> col >> num;
+
+        if (isValid(board, row, col, num)) {
+            board[row][col] = num;
+            playerMoves++;
+            correctMoves++;
+        } else {
+            cout << "Invalid move!" << endl;
+        }
+
+        // Check for completion
+        if (all_of(board.begin(), board.end(), [](const vector<int>& r) { return all_of(r.begin(), r.end(), [](int n) { return n != 0; }); })) {
+            timeTaken = (clock() - startTime) / (double)CLOCKS_PER_SEC;
+            cout << "Congratulations! You've completed the Sudoku in " << timeTaken << " seconds." << endl;
+            cout << "Score: " << calculateScore(timeTaken, correctMoves, playerMoves) << endl;
+            gameInProgress = false;
+        }
+    }
+
+    return 0;
+}
+
+// Function to generate a completed Sudoku board
+void generateCompletedBoard(vector<vector<int>>& board) {
+    solveSudoku(board); // Generate a completed board
+}
+
+// Function to check if a number can be placed at a given position
+bool isValid(const vector<vector<int>>& board, int row, int col, int num) {
+    for (int i = 0; i < SIZE; i++) {
+        if (board[row][i] == num || board[i][col] == num) {
+            return false;
+        }
+    }
+
+    int startRow = row - row % 3;
+    int startCol = col - col % 3;
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            if (board[i + startRow][j + startCol] == num) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+// Backtracking function to solve the Sudoku
+bool solveSudoku(vector<vector<int>>& board) {
+    for (int row = 0; row < SIZE; row++) {
+        for (int col = 0; col < SIZE; col++) {
+            if (board[row][col] == 0) {
+                for (int num = 1; num <= 9; num++) {
+                    if (isValid(board, row, col, num)) {
+                        board[row][col] = num;
+                        if (solveSudoku(board)) {
+                            return true;
+                        }
+                        board[row][col] = 0;
+                    }
+                }
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+// Function to create a puzzle by removing numbers
+void createPuzzle(vector<vector<int>>& board, int difficulty) {
+    srand(time(0));
+    for (int i = 0; i < difficulty; i++) {
+        int row = rand() % SIZE;
+        int col = rand() % SIZE;
+        while (board[row][col] == 0) { // Ensure we remove a filled cell
+            row = rand() % SIZE;
+            col = rand() % SIZE;
+        }
+        board[row][col] = 0; // Remove the number
+    }
+}
+
+// Function to print the Sudoku board
+void printBoard(const vector<vector<int>>& board) {
+    for (const auto& row : board) {
+        for (int num : row) {
+            cout << (num == 0 ? "." : to_string(num)) << " ";
+        }
+        cout << endl;
+    }
+}
+
+// Function to save the game state
+void saveGame(const vector<vector<int>>& board, const string& filename) {
+    ofstream file(filename);
+    for (const auto& row : board) {
+        for (int num : row) {
+            file << num << " ";
+        }
+        file << endl;
+    }
+    file.close();
+}
+
+// Function to load the game state
+void loadGame(vector<vector<int>>& board, const string& filename) {
+    ifstream file(filename);
+    for (auto& row : board) {
+        for (int& num : row) {
+            file >> num;
+        }
+    }
+    file.close();
+}
+
+// Function to calculate the score
+int calculateScore(double timeTaken, int correctMoves, int totalMoves) {
+    return static_cast<int>(1000 - timeTaken * 10 + correctMoves - totalMoves);
+}
+
+// Function to start the timer (for display purposes)
+void startTimer() {
+    // Timer can be extended for more complex functionalities if needed
+}
+
